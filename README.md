@@ -41,7 +41,7 @@ React application for the Tradazone crypto invoicing and payment platform.
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/Blockora-dex/Tradazone.git
+git clone https://github.com/Tradazone/Tradazone.git
 cd Tradazone
 
 # 2. Install dependencies
@@ -73,11 +73,11 @@ The app runs at http://localhost:5173.
 
 ### Running the Backend API Locally
 
-To connect to the real API locally, clone and run [tradazone-api](https://github.com/Blockora-dex/tradazone-api):
+To connect to the real API locally, clone and run [tradazone-api](https://github.com/Tradazone/tradazone-api):
 
 ```bash
 # In a separate terminal
-git clone https://github.com/Blockora-dex/tradazone-api.git
+git clone https://github.com/Tradazone/tradazone-api.git
 cd tradazone-api
 npm install
 cp .env.example .env
@@ -131,7 +131,7 @@ In your DNS provider, add:
 
 ```
 Type   Name    Value
-CNAME  app     blockora-dex.github.io
+CNAME  app     tradazone.github.io
 ```
 
 Then in **GitHub repo → Settings → Pages → Custom domain**, enter `app.tradazone.com` and enable **Enforce HTTPS**.
