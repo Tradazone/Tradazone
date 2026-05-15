@@ -1,19 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl     = import.meta.env.VITE_SUPABASE_URL     as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
     '[Supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. ' +
-    'Add them to your .env file.'
+    'Data features will be unavailable.'
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    storageKey: 'tradazone_supabase_session',
+// Use placeholder values when env vars are missing so createClient() never
+// throws on startup — the app will still render, API calls will just fail.
+export const supabase = createClient(
+  supabaseUrl      || 'https://placeholder.supabase.co',
+  supabaseAnonKey  || 'placeholder-anon-key',
+  {
+    auth: {
+      persistSession:   true,
+      autoRefreshToken: true,
+      storageKey:       'tradazone_supabase_session',
+    },
   },
-});
+);
