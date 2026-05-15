@@ -1,0 +1,85 @@
+name: Staging CI
+
+# Runs on every PR and on pushes to the staging branch.
+# Validates code quality and produces a staging build artifact — does NOT
+# deploy to GitHub Pages (that is production-only from main).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [staging]
+
+jobs:
+  lint:
+    name: Lint & Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm test
+
+  build-staging:
+    name: Build (staging)
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+
+      - name: Build staging
+        run: npm run build
+        env:
+          VITE_APP_ENV:                staging
+          VITE_BASE_PATH:              /Tradazone/
+          VITE_APP_NAME:               Tradazone (Staging)
+          VITE_SUPABASE_URL:           ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY:      ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_WALLETCONNECT_PROJECT_ID: d30b837db2592d6f405f75c8ed425b3a
+          VITE_SENTRY_DSN:             ${{ secrets.VITE_SENTRY_DSN }}
+
+      - name: Check bundle sizes
+        run: |
+          FAIL=0; FAIL_KB=1100
+          for f in dist/assets/*.js; do
+            kb=$(du -k "$f" | cut -f1)
+            name=$(basename "$f")
+            if [ "$kb" -gt "$FAIL_KB" ]; then
+              echo "❌ FAIL $name — ${kb}kB"; FAIL=1
+            else
+              echo "✅ OK   $name — ${kb}kB"
+            fi
+          done
+          [ $FAIL -eq 0 ] || exit 1
+
+      # Store the staging build as a downloadable artifact so reviewers can
+      # inspect the output before approving the production deployment.
+      - name: Upload staging build
+        uses: actions/upload-artifact@v4
+        with:
+          name:              staging-build-${{ github.sha }}
+          path:              dist/
+          retention-days:    3

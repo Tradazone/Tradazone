@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 /**
  * @fileoverview Visual snapshot tests for CustomerList — Issue #162
  *

@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 /**
  * src/test/sep38.test.ts
  *

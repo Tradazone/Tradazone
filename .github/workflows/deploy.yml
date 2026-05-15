@@ -16,43 +16,87 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build
+  # ── Quality gates ──────────────────────────────────────────────────────────
+  lint:
+    name: Lint & Type-check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
 
-      - name: Install dependencies
-        run: npm ci
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm test
 
-      - name: Build for production
+  # ── Build ──────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+
+      - name: Build
         run: npm run build
         env:
-          VITE_APP_ENV: production
-          VITE_BASE_PATH: /Tradazone/
-          VITE_APP_NAME: Tradazone
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_EMAILJS_SERVICE_ID: ${{ secrets.VITE_EMAILJS_SERVICE_ID }}
-          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
-          VITE_EMAILJS_TEMPLATE_INVOICE: ${{ secrets.VITE_EMAILJS_TEMPLATE_INVOICE }}
-          VITE_EMAILJS_TEMPLATE_RECEIPT: ${{ secrets.VITE_EMAILJS_TEMPLATE_RECEIPT }}
-          VITE_WEBHOOK_URL: ${{ secrets.VITE_WEBHOOK_URL }}
-          VITE_SEP38_URL: ${{ secrets.VITE_SEP38_URL }}
+          VITE_APP_ENV:                production
+          VITE_BASE_PATH:              /Tradazone/
+          VITE_APP_NAME:               Tradazone
+          VITE_API_URL:                ${{ secrets.VITE_API_URL }}
+          VITE_SUPABASE_URL:           ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY:      ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_WALLETCONNECT_PROJECT_ID: d30b837db2592d6f405f75c8ed425b3a
+          VITE_SENTRY_DSN:             ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_POSTHOG_KEY:            ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_WEBHOOK_URL:            ${{ secrets.VITE_WEBHOOK_URL }}
+          VITE_SEP38_URL:              ${{ secrets.VITE_SEP38_URL }}
+          SENTRY_AUTH_TOKEN:           ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-      - name: Upload build artifact
+      - name: Check bundle sizes
+        run: |
+          FAIL=0; FAIL_KB=1100; WARN_KB=600
+          for f in dist/assets/*.js; do
+            kb=$(du -k "$f" | cut -f1)
+            name=$(basename "$f")
+            if [ "$kb" -gt "$FAIL_KB" ]; then
+              echo "❌ FAIL $name — ${kb}kB > ${FAIL_KB}kB limit"; FAIL=1
+            elif [ "$kb" -gt "$WARN_KB" ]; then
+              echo "⚠️  WARN $name — ${kb}kB"
+            else
+              echo "✅ OK   $name — ${kb}kB"
+            fi
+          done
+          [ $FAIL -eq 0 ] || { echo "Bundle limit exceeded."; exit 1; }
+
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
 
+  # ── Deploy ─────────────────────────────────────────────────────────────────
   deploy:
-    name: Deploy
+    name: Deploy to production
     needs: build
     runs-on: ubuntu-latest
     environment:

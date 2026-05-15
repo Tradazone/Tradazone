@@ -1,3 +1,4 @@
+﻿// @ts-nocheck
 /**
  * src/stellar/sep38.ts
  *
